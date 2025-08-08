@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Least Count Tracker</title>
+    <!-- Inter font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom font: Dreaming Outloud Pro -->
+    <link href="https://fonts.cdnfonts.com/css/dreaming-outloud-pro" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #C4FCEC; /* Updated background color */
+            background-image: repeating-linear-gradient(-45deg,
+                #C4FCEC 0%, #C4FCEC 2px,
+                #e2e8f0 2px, #e2e8f0 4px); /* Thinner, brighter grey lines */
+        }
+        /* Custom font for the main title */
+        .title-font {
+            font-family: 'Monotype Corsiva', cursive;
+            color: #ffffff; /* White font color for better contrast */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7); /* Subtle shadow for readability */
+        }
+        /* Custom scrollbar for player list */
+        .player-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .player-list::-webkit-scrollbar-track {
+            background: #e5e7eb;
+            border-radius: 10px;
+        }
+        .player-list::-webkit-scrollbar-thumb {
+            background-color: #9ca3af;
+            border-radius: 10px;
+            border: 2px solid #e5e7eb;
+        }
+
+        /* Poker-themed background for the chart */
+        .poker-background {
+            background-image: url("https://images.unsplash.com/photo-1626775238053-4315516eedc9?q=80&w=1173&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D");
+            background-size: cover;
+            background-position: center;
+        }
+
+        /* Bordered rows for summary table */
+        #summaryTableBody tr {
+            border-bottom: 1px solid #d1d5db; /* Grey border for rows */
+        }
+        #summaryTableBody tr:last-child {
+            border-bottom: none;
+        }
+
+        /* Blue color for player names in the table header */
+        .player-name-header {
+            color: #2563eb;
+        }
+        
+        /* Flashy winning effect */
+        @keyframes glowing {
+            0% { box-shadow: 0 0 -10px #e0f2f7, 0 0 10px #e0f2f7; }
+            50% { box-shadow: 0 0 20px #e0f2f7, 0 0 30px #0ea5e9; }
+            100% { box-shadow: 0 0 -10px #e0f2f7, 0 0 10px #e0f2f7; }
+        }
+        .winning-animation {
+            animation: glowing 1.5s infinite;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+    <div class="max-w-7xl mx-auto bg-white shadow-xl rounded-2xl p-6 sm:p-10 lg:p-12">
+        <h1 class="text-5xl sm:text-6xl font-extrabold text-gray-900 text-center mb-2 title-font">Least Count Tracker</h1>
+        <p class="text-center text-lg text-gray-600 mb-8">Inka Thellarluuu !!!</p>
+
+        <!-- Player Input Section -->
+        <div class="bg-gray-50 rounded-xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 md:space-x-4">
+            <input type="text" id="playerNameInput" placeholder="Player Name" class="flex-grow p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-indigo-500 transition-all duration-200">
+            <label for="playerPhotoInput" class="w-full md:w-auto cursor-pointer p-3 bg-white text-gray-700 rounded-lg border-2 border-gray-300 text-center hover:bg-gray-100 transition-colors duration-200">
+                <span id="photoLabelText">Upload Photo</span>
+                <input type="file" id="playerPhotoInput" class="hidden" accept="image/*">
+            </label>
+            <button id="addPlayerButton" class="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                Add Player
+            </button>
+            <button id="newGameButton" class="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                New Game
+            </button>
+        </div>
+
+        <!-- Scores Table & Chart Container -->
+        <div class="grid grid-cols-1 gap-8">
+            <!-- Player Scores Table -->
+            <div class="bg-gray-50 rounded-xl p-6 min-h-[400px] overflow-y-auto player-list shadow-md">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Player Scores</h2>
+                <div id="tableContainer">
+                </div>
+                <p id="noPlayersMessage" class="text-center text-gray-500 text-lg">Add a player to get started!</p>
+            </div>
+
+            <!-- Score Summary Table -->
+            <div id="summaryTableContainer" class="bg-gray-50 rounded-xl p-6 shadow-md hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Current Standings Summary</h2>
+                <div class="flex items-center justify-between space-x-2 mb-4">
+                    <div class="flex items-center space-x-2">
+                        <label for="currencyValue" class="text-gray-700">Currency Value:</label>
+                        <div class="relative">
+                            <input type="number" id="currencyValue" placeholder="0-100" min="0" max="100" value="50" class="w-24 p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-indigo-500 transition-all duration-200 pr-8">
+                            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                        </div>
+                    </div>
+                    <div id="winnerDisplay" class="flex items-center space-x-2 bg-blue-500 rounded-full px-4 py-2 text-white font-bold text-sm winning-animation hidden">
+                        <!-- Winner info will be injected here -->
+                    </div>
+                </div>
+                <table class="w-full text-center table-auto">
+                    <thead>
+                        <tr class="bg-gray-200 text-gray-700">
+                            <th class="p-4 rounded-tl-lg text-center">Player Name</th>
+                            <th class="p-4 text-center">Total Score</th>
+                            <th class="p-4 text-center">Points Difference</th>
+                            <th class="p-4 text-center">Payable Amount</th>
+                            <th class="p-4 rounded-tr-lg text-center">Total Risked</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryTableBody">
+                        <!-- Summary rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Bar Chart Section -->
+            <div class="bg-gray-50 rounded-xl p-6 flex flex-col items-center">
+                <div id="chartContainer" class="w-full shadow-md rounded-lg poker-background">
+                    <canvas id="scoreChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Global State ---
+            let players = [];
+            let roundDeclarations = []; // New array to store round-specific data
+            let chartInstance = null;
+            
+            // --- DOM Elements ---
+            const playerNameInput = document.getElementById('playerNameInput');
+            const playerPhotoInput = document.getElementById('playerPhotoInput');
+            const addPlayerButton = document.getElementById('addPlayerButton');
+            const newGameButton = document.getElementById('newGameButton');
+            const tableContainer = document.getElementById('tableContainer');
+            const summaryTableContainer = document.getElementById('summaryTableContainer');
+            const summaryTableBody = document.getElementById('summaryTableBody');
+            const noPlayersMessage = document.getElementById('noPlayersMessage');
+            const photoLabelText = document.getElementById('photoLabelText');
+            const chartContainer = document.getElementById('chartContainer');
+            const currencyValueInput = document.getElementById('currencyValue');
+            const winnerDisplay = document.getElementById('winnerDisplay');
+
+
+            // --- Chart.js Custom Plugin for Images and Labels ---
+            const imageAndLabelPlugin = {
+                id: 'playerImagesAndLabels',
+                afterDatasetsDraw(chart) {
+                    const { ctx, chartArea: { left, right }, scales: { x, y } } = chart;
+                    
+                    const sortedPlayers = [...players].sort((a, b) => a.total - b.total);
+                    
+                    chart.getDatasetMeta(0).data.forEach((bar, index) => {
+                        const player = sortedPlayers[index];
+                        const image = new Image();
+                        image.src = player.photo;
+                        
+                        const imageSize = 65; // Fixed image size
+                        const imageX = bar.x - imageSize - 5;
+                        const imageY = bar.y - (imageSize / 2);
+                        const radius = imageSize / 2;
+
+                        ctx.save();
+                        // Create a circular clip path to mask the image
+                        ctx.beginPath();
+                        ctx.arc(imageX + radius, imageY + radius, radius, 0, Math.PI * 2, true);
+                        ctx.closePath();
+                        ctx.clip();
+
+                        // Draw image
+                        ctx.drawImage(image, imageX, imageY, imageSize, imageSize);
+                        
+                        // Restore the canvas context after drawing to remove the clip path
+                        ctx.restore();
+                        ctx.save();
+                        
+                        // Draw name and score label
+                        ctx.fillStyle = '#FFFFFF'; 
+                        ctx.font = 'bold 14.4px Inter, sans-serif'; 
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'middle';
+                        
+                        const textX = bar.x + 5; 
+                        const textY = bar.y;
+
+                        ctx.fillText(`${player.name}: ${player.total}`, textX, textY);
+                        ctx.restore();
+                    });
+                }
+            };
+            
+            // --- Chart Configuration ---
+            const chartConfig = {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Total Score',
+                        data: [],
+                        backgroundColor: [],
+                        borderColor: [],
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        barThickness: 65 // Fixed bar height
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y', // Make it a horizontal bar chart
+                    scales: {
+                        x: {
+                            display: false,
+                        },
+                        y: {
+                            display: false,
+                            barPercentage: 0.8, 
+                            categoryPercentage: 0.88 // Adjusted spacing between bars (0.68 + 20%)
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.x !== null) {
+                                        label += new Intl.NumberFormat().format(context.parsed.x);
+                                    }
+                                    return label;
+                                }
+                            }
+                        },
+                        shadow: {
+                            enabled: true,
+                            color: 'rgba(0, 0, 0, 0.2)',
+                            xOffset: 5,
+                            yOffset: 5,
+                            blur: 10
+                        }
+                    },
+                    animation: {
+                        duration: 700,
+                        easing: 'easeInOutQuart'
+                    }
+                },
+                plugins: [imageAndLabelPlugin]
+            };
+
+            const shadowPlugin = {
+                id: 'shadow',
+                beforeDraw(chart) {
+                    if (chart.options.plugins.shadow.enabled) {
+                        const { ctx, options } = chart;
+                        const { color, xOffset, yOffset, blur } = options.plugins.shadow;
+                        ctx.shadowColor = color;
+                        ctx.shadowBlur = blur;
+                        ctx.shadowOffsetX = xOffset;
+                        ctx.shadowOffsetY = yOffset;
+                    }
+                },
+                afterDraw(chart) {
+                    if (chart.options.plugins.shadow.enabled) {
+                        const { ctx } = chart;
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0)';
+                        ctx.shadowBlur = 0;
+                        ctx.shadowOffsetX = 0;
+                        ctx.shadowOffsetY = 0;
+                    }
+                }
+            };
+            
+            const initializeChart = () => {
+                const ctx = document.getElementById('scoreChart').getContext('2d');
+                chartInstance = new Chart(ctx, chartConfig);
+            };
+
+            const renderSummaryTable = () => {
+                if (players.length < 2) {
+                    summaryTableContainer.classList.add('hidden');
+                    return;
+                }
+                
+                summaryTableContainer.classList.remove('hidden');
+                summaryTableBody.innerHTML = '';
+                
+                const sortedPlayers = [...players].sort((a, b) => a.total - b.total);
+                const leastScore = sortedPlayers[0].total;
+                const currencyValue = parseFloat(currencyValueInput.value) || 50;
+
+                let totalPayable = 0;
+                const differences = sortedPlayers.map(p => leastScore - p.total);
+                
+                const otherPlayersPayable = differences.slice(1).reduce((sum, diff) => {
+                    const payable = Math.abs(diff * (currencyValue / 100));
+                    return sum + payable;
+                }, 0);
+                
+                // Render the winner display
+                if (players.length > 0) {
+                    const winner = sortedPlayers[0];
+                    winnerDisplay.innerHTML = `
+                        <img src="${winner.photo}" alt="${winner.name}'s photo" class="w-8 h-8 rounded-full object-cover border-2 border-white">
+                        <span>${winner.name} is winning!</span>
+                    `;
+                    winnerDisplay.classList.remove('hidden');
+                } else {
+                    winnerDisplay.classList.add('hidden');
+                }
+                
+                const allRiskedScores = players.map(p => roundDeclarations.filter(r => r.declaredBy === p.name).reduce((sum, r) => sum + r.amount, 0));
+                const highestRisked = Math.max(...allRiskedScores);
+                const lowestRisked = Math.min(...allRiskedScores);
+
+                sortedPlayers.forEach((player, index) => {
+                    const row = document.createElement('tr');
+                    const difference = leastScore - player.total;
+                    const totalRisked = roundDeclarations.filter(r => r.declaredBy === player.name).reduce((sum, r) => sum + r.amount, 0);
+                    let payableAmount;
+                    let payableAmountColor = '';
+                    let totalRiskedColor = '';
+
+                    if (difference === 0) {
+                        payableAmount = otherPlayersPayable;
+                        payableAmountColor = 'text-green-500';
+                    } else {
+                        payableAmount = Math.abs(difference * (currencyValue / 100));
+                        payableAmountColor = 'text-red-500';
+                    }
+
+                    if (players.length > 1) {
+                         if (totalRisked === highestRisked && highestRisked !== 0) {
+                            totalRiskedColor = 'text-green-500';
+                        } else if (totalRisked === lowestRisked) {
+                            totalRiskedColor = 'text-red-500';
+                        }
+                    } else if (totalRisked !== 0) {
+                        // For a single player, just make it green if they have risked anything
+                        totalRiskedColor = 'text-green-500';
+                    } else if (totalRisked === 0) {
+                        totalRiskedColor = 'text-gray-500';
+                    }
+
+                    
+                    row.className = 'bg-white rounded-lg shadow-sm border-b border-gray-300';
+                    row.innerHTML = `
+                        <td class="py-2 text-center">${player.name}</td>
+                        <td class="py-2 font-bold text-center">${player.total}</td>
+                        <td class="py-2 text-center">${difference}</td>
+                        <td class="py-2 text-center ${payableAmountColor}">₹ ${payableAmount.toFixed(2)}</td>
+                        <td class="py-2 text-center ${totalRiskedColor}">${totalRisked}</td>
+                    `;
+                    summaryTableBody.appendChild(row);
+                });
+            };
+
+            const updateChart = () => {
+                if (!chartInstance) return;
+
+                const sortedPlayers = [...players].sort((a, b) => a.total - b.total);
+                const labels = sortedPlayers.map(p => p.name);
+                const data = sortedPlayers.map(p => p.total);
+                const backgroundColors = [];
+                const borderColors = [];
+
+                if (sortedPlayers.length > 0) {
+                    const minScore = sortedPlayers[0].total;
+                    const maxScore = sortedPlayers[sortedPlayers.length - 1].total;
+                    const scoreRange = maxScore - minScore;
+
+                    const green = [34, 197, 94];
+                    const orange = [251, 191, 36];
+                    const red = [239, 68, 68];
+
+                    sortedPlayers.forEach(player => {
+                        let color;
+                        if (scoreRange === 0) {
+                            color = green;
+                        } else {
+                            const t = (player.total - minScore) / scoreRange;
+                            if (t < 0.5) {
+                                const ratio = t * 2;
+                                const r = Math.round(green[0] + ratio * (orange[0] - green[0]));
+                                const g = Math.round(green[1] + ratio * (orange[1] - green[1]));
+                                const b = Math.round(green[2] + ratio * (orange[2] - green[2]));
+                                color = [r, g, b];
+                            } else {
+                                const ratio = (t - 0.5) * 2;
+                                const r = Math.round(orange[0] + ratio * (red[0] - orange[0]));
+                                const g = Math.round(orange[1] + ratio * (red[1] - orange[1]));
+                                const b = Math.round(orange[2] + ratio * (red[2] - orange[2]));
+                                color = [r, g, b];
+                            }
+                        }
+                        backgroundColors.push(`rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.75)`);
+                        borderColors.push(`rgba(${color[0]}, ${color[1]}, ${color[2]}, 1)`);
+                    });
+                }
+                
+                chartInstance.data.labels = labels;
+                chartInstance.data.datasets[0].data = data;
+                chartInstance.data.datasets[0].backgroundColor = backgroundColors;
+                chartInstance.data.datasets[0].borderColor = borderColors;
+                
+                const barHeight = 65;
+                const totalHeight = players.length > 0 ? players.length * (barHeight / chartConfig.options.scales.y.categoryPercentage) : 200;
+                chartContainer.style.height = `${totalHeight}px`;
+
+                chartInstance.options.scales.x.max = Math.max(...data) + 20;
+                chartInstance.resize();
+                chartInstance.update();
+            };
+
+            const renderTable = () => {
+                const totalRounds = players.length > 0 ? players[0].scores.length : 0;
+                tableContainer.innerHTML = '';
+                const noPlayersMessage = document.getElementById('noPlayersMessage');
+
+                if (players.length === 0) {
+                    noPlayersMessage.style.display = 'block';
+                    return;
+                }
+                
+                noPlayersMessage.style.display = 'none';
+
+                const table = document.createElement('table');
+                table.className = 'w-full text-center table-auto border-separate border-spacing-y-2';
+
+                const thead = document.createElement('thead');
+                let headerHTML = `
+                    <tr class="bg-gray-200 text-gray-700">
+                        <th class="p-4 rounded-tl-lg text-center"></th>
+                        <th class="p-4 text-center">Round</th>
+                        <th class="p-4 text-center">Risked By</th>
+                        <th class="p-4 text-center">Risk Score</th>
+                `;
+                players.forEach(player => {
+                    headerHTML += `
+                        <th class="p-4 pl-8 relative text-center">
+                            <span class="player-name-header text-blue-600">${player.name}</span>
+                            <button class="remove-player-btn absolute top-1 right-1 text-red-500 hover:text-red-700" data-player-id="${player.id}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </th>
+                    `;
+                });
+                headerHTML += `<th class="p-4 rounded-tr-lg text-center">Total Score</th></tr>`;
+                thead.innerHTML = headerHTML;
+                table.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+
+                const totalRow = document.createElement('tr');
+                totalRow.className = 'bg-white rounded-lg shadow-sm font-bold text-gray-800';
+                let totalHTML = `<td class="p-4 rounded-l-lg bg-gray-100 text-center" colspan="4">Total</td>`;
+                players.forEach(player => {
+                    totalHTML += `<td class="p-4 pl-8 bg-gray-100 text-center">${player.total}</td>`;
+                });
+                totalHTML += `<td class="p-4 rounded-r-lg bg-gray-100 text-center">${players.reduce((sum, p) => sum + p.total, 0)}</td>`;
+                totalRow.innerHTML = totalHTML;
+                tbody.appendChild(totalRow);
+                
+                for (let i = 0; i < totalRounds; i++) {
+                    const row = document.createElement('tr');
+                    row.className = 'bg-white rounded-lg shadow-sm';
+                    
+                    const declaredBy = roundDeclarations[i] ? roundDeclarations[i].declaredBy : '';
+                    const declaredScore = roundDeclarations[i] ? roundDeclarations[i].amount : '';
+
+                    let rowHTML = `
+                        <td class="p-4 rounded-l-lg text-center">
+                            <button class="edit-row-btn" data-round-index="${i}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 hover:text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                                    <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v8h8v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </td>
+                        <td class="p-4 font-medium text-center text-gray-900">${i + 1}</td>
+                        <td class="p-4 text-center text-gray-600">${declaredBy}</td>
+                        <td class="p-4 text-center text-gray-600">${declaredScore}</td>
+                    `;
+                    players.forEach(player => {
+                        const score = player.scores[i];
+                        rowHTML += `<td class="p-4 pl-8 text-center text-blue-600">${score}</td>`;
+                    });
+                    
+                    rowHTML += `<td class="p-4 font-bold text-center text-gray-800 rounded-r-lg">${players.map(p => p.scores[i]).reduce((sum, score) => sum + score, 0)}</td>`;
+                    row.innerHTML = rowHTML;
+                    tbody.appendChild(row);
+                }
+                
+                const newRoundRow = document.createElement('tr');
+                newRoundRow.id = 'newRoundRow';
+                newRoundHTML = `<td class="p-4 rounded-l-lg text-center" colspan="2">Add Round</td>`;
+                
+                newRoundHTML += `<td class="p-4 text-center">
+                                    <select id="declaredBySelect" class="w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-indigo-500 transition-all duration-200">
+                                        <option value="">Select Player</option>
+                                        ${players.map(p => `<option value="${p.name}">${p.name}</option>`).join('')}
+                                    </select>
+                                 </td>`;
+
+                newRoundHTML += `<td class="p-4 text-center">
+                                    <input type="text" pattern="[0-9]*" id="roundAmountInput" placeholder="Score" class="w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-indigo-500 transition-all duration-200">
+                                 </td>`;
+                
+                players.forEach(player => {
+                    newRoundHTML += `<td class="p-4"><input type="text" pattern="[0-9]*" id="score-input-${player.id}" placeholder="Score" class="w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-indigo-500 transition-all duration-200"></td>`;
+                });
+                newRoundHTML += `<td class="p-4 rounded-r-lg">
+                                    <button id="addRoundButton" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                                        Save
+                                    </button>
+                                 </td>`;
+                newRoundRow.innerHTML = newRoundHTML;
+                tbody.appendChild(newRoundRow);
+
+                table.appendChild(tbody);
+                tableContainer.appendChild(table);
+
+                document.getElementById('addRoundButton').addEventListener('click', addRoundHandler);
+                document.querySelectorAll('.edit-row-btn').forEach(button => {
+                    button.addEventListener('click', handleEditClick);
+                });
+                document.querySelectorAll('.remove-player-btn').forEach(button => {
+                    button.addEventListener('click', handleRemovePlayer);
+                });
+            };
+            
+            const handleRemovePlayer = (event) => {
+                const playerId = parseInt(event.currentTarget.dataset.playerId);
+                const playerIndex = players.findIndex(p => p.id === playerId);
+                const playerName = players[playerIndex].name;
+                
+                createConfirmationModal(
+                    `Are you sure you want to remove ${playerName}? This will delete all their scores.`,
+                    () => {
+                        players.splice(playerIndex, 1);
+                        updateTotals();
+                    },
+                    () => {}
+                );
+            };
+
+            const handleEditClick = (event) => {
+                const button = event.currentTarget;
+                const roundIndex = parseInt(button.dataset.roundIndex);
+                const row = button.closest('tr');
+
+                if (row.classList.contains('editing')) {
+                    const newDeclaredBy = row.querySelector(`#edit-declaredBy-${roundIndex}`).value;
+                    const newDeclaredScore = parseInt(row.querySelector(`#edit-declaredScore-${roundIndex}`).value);
+                    
+                    if (!newDeclaredBy || isNaN(newDeclaredScore)) {
+                        createAlertModal('Please select a player and enter a numeric declared score.');
+                        return;
+                    }
+                    
+                    roundDeclarations[roundIndex].declaredBy = newDeclaredBy;
+                    roundDeclarations[roundIndex].amount = newDeclaredScore;
+                    
+                    players.forEach(player => {
+                        const newScore = parseInt(row.querySelector(`#edit-score-${player.id}-${roundIndex}`).value);
+                        if (!isNaN(newScore)) {
+                            player.scores[roundIndex] = newScore;
+                        }
+                    });
+                    
+                    row.classList.remove('editing');
+                    updateTotals();
+                } else {
+                    row.classList.add('editing');
+                    const declaredBy = roundDeclarations[roundIndex] ? roundDeclarations[roundIndex].declaredBy : '';
+                    const declaredScore = roundDeclarations[roundIndex] ? roundDeclarations[roundIndex].amount : '';
+
+                    let newRowHTML = `
+                        <td class="p-4 rounded-l-lg text-center">
+                            <button class="save-row-btn" data-round-index="${roundIndex}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500 hover:text-green-700" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </td>
+                        <td class="p-4 font-medium text-center text-gray-900">${roundIndex + 1}</td>
+                        <td class="p-4 text-center">
+                            <select id="edit-declaredBy-${roundIndex}" class="w-full p-2 rounded-lg border-2 border-gray-300">
+                                ${players.map(p => `<option value="${p.name}" ${p.name === declaredBy ? 'selected' : ''}>${p.name}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td class="p-4 text-center">
+                            <input type="text" pattern="[0-9]*" id="edit-declaredScore-${roundIndex}" value="${declaredScore}" class="w-full p-2 rounded-lg border-2 border-gray-300">
+                        </td>
+                    `;
+                    players.forEach(player => {
+                        const score = player.scores[roundIndex];
+                        newRowHTML += `<td class="p-4 pl-8 text-center text-blue-600"><input type="text" pattern="[0-9]*" id="edit-score-${player.id}-${roundIndex}" value="${score}" class="w-full p-2 rounded-lg border-2 border-gray-300"></td>`;
+                    });
+                    newRowHTML += `<td class="p-4 font-bold text-center text-gray-800 rounded-r-lg"></td>`;
+                    
+                    row.innerHTML = newRowHTML;
+                    
+                    row.querySelector('.save-row-btn').addEventListener('click', handleEditClick);
+                }
+            };
+            
+            const saveState = () => {
+                try {
+                    localStorage.setItem('players', JSON.stringify(players));
+                    localStorage.setItem('roundDeclarations', JSON.stringify(roundDeclarations));
+                } catch (e) {
+                    console.error("Error saving to local storage", e);
+                }
+            };
+
+            const loadState = () => {
+                try {
+                    const savedPlayers = localStorage.getItem('players');
+                    const savedRoundDeclarations = localStorage.getItem('roundDeclarations');
+                    if (savedPlayers) {
+                        players = JSON.parse(savedPlayers);
+                    }
+                    if (savedRoundDeclarations) {
+                        roundDeclarations = JSON.parse(savedRoundDeclarations);
+                    }
+                } catch (e) {
+                    console.error("Error loading from local storage", e);
+                    localStorage.removeItem('players');
+                    localStorage.removeItem('roundDeclarations');
+                }
+            };
+
+            const updateTotals = () => {
+                players.forEach(player => {
+                    player.total = player.scores.reduce((sum, score) => sum + score, 0);
+                });
+                renderTable();
+                updateChart();
+                renderSummaryTable();
+                saveState();
+            };
+            
+            const startNewGame = () => {
+                players = [];
+                roundDeclarations = [];
+                localStorage.removeItem('players');
+                localStorage.removeItem('roundStorage');
+                updateTotals();
+            };
+            
+            function createConfirmationModal(message, onConfirm, onCancel) {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-lg p-6 max-w-sm mx-auto">
+                        <p class="text-gray-800 text-lg font-semibold mb-6">${message}</p>
+                        <div class="flex justify-end space-x-4">
+                            <button id="modalCancelButton" class="px-4 py-2 bg-gray-300 text-gray-800 font-bold rounded-lg hover:bg-gray-400">No</button>
+                            <button id="modalConfirmButton" class="px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700">Yes, erase data</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                document.getElementById('modalConfirmButton').addEventListener('click', () => {
+                    onConfirm();
+                    modal.remove();
+                });
+                document.getElementById('modalCancelButton').addEventListener('click', () => {
+                    onCancel();
+                    modal.remove();
+                });
+            }
+
+            const addRoundHandler = () => {
+                const roundScores = [];
+                let allScoresEntered = true;
+                const declaredBy = document.getElementById('declaredBySelect').value;
+                const declaredScore = parseInt(document.getElementById('roundAmountInput').value, 10);
+
+                if (!declaredBy || isNaN(declaredScore)) {
+                    const modal = createAlertModal('Please select a player and enter a numeric declared score.');
+                    document.body.appendChild(modal);
+                    return;
+                }
+                
+                players.forEach(player => {
+                    const input = document.getElementById(`score-input-${player.id}`);
+                    const scoreValue = parseInt(input.value, 10);
+                    if (isNaN(scoreValue)) {
+                        allScoresEntered = false;
+                    }
+                    roundScores.push(scoreValue);
+                });
+
+                if (!allScoresEntered) {
+                    const modal = createAlertModal('Please enter a score for all players.');
+                    document.body.appendChild(modal);
+                    return;
+                }
+                
+                roundDeclarations.push({ declaredBy, amount: declaredScore });
+                
+                players.forEach((player, index) => {
+                    player.scores.push(roundScores[index]);
+                });
+                
+                updateTotals();
+            };
+
+            addPlayerButton.addEventListener('click', () => {
+                const name = playerNameInput.value.trim();
+                const photoFile = playerPhotoInput.files[0];
+
+                if (!name) {
+                    const modal = createAlertModal('Please enter a player name.');
+                    document.body.appendChild(modal);
+                    return;
+                }
+                
+                const newPlayer = {
+                    id: Date.now(),
+                    name: name,
+                    photo: '',
+                    scores: [],
+                    total: 0
+                };
+                
+                if (photoFile) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        newPlayer.photo = e.target.result;
+                        players.push(newPlayer);
+                        playerNameInput.value = '';
+                        playerPhotoInput.value = '';
+                        photoLabelText.textContent = 'Upload Photo';
+                        updateTotals();
+                    };
+                    reader.readAsDataURL(photoFile);
+                } else {
+                    newPlayer.photo = `https://placehold.co/100x100/A3A3A3/ffffff?text=${name.charAt(0)}`;
+                    players.push(newPlayer);
+                    playerNameInput.value = '';
+                    photoLabelText.textContent = 'Upload Photo';
+                    updateTotals();
+                }
+            });
+            
+            newGameButton.addEventListener('click', () => {
+                createConfirmationModal(
+                    'Are you sure you want to start a new game? This will erase all current scores and players.',
+                    startNewGame,
+                    () => {}
+                );
+            });
+
+            function createAlertModal(message) {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-lg p-6 max-w-sm mx-auto">
+                        <p class="text-gray-800 text-lg font-semibold mb-4">${message}</p>
+                        <button class="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg" onclick="this.closest('.fixed').remove()">OK</button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+
+            playerPhotoInput.addEventListener('change', () => {
+                if (playerPhotoInput.files.length > 0) {
+                    photoLabelText.textContent = playerPhotoInput.files[0].name;
+                } else {
+                    photoLabelText.textContent = 'Upload Photo';
+                }
+            });
+
+            currencyValueInput.addEventListener('input', () => {
+                updateTotals(); // Trigger a re-render when the currency value changes
+            });
+            
+            loadState();
+            initializeChart();
+            updateTotals();
+        });
+    </script>
+</body>
+</html>
